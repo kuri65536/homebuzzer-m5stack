@@ -623,6 +623,7 @@ app_main(void)
     /* XXX Need to have template for store */
     ble_store_config_init();
 
+    buzzer_init();
     nimble_port_freertos_init(blecent_host_task);
 
 }
