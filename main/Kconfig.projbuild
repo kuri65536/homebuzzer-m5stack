@@ -12,4 +12,50 @@ menu "HomeBuzzer App Configuration"
         prompt "Enable Extended Adv"
         help
             Use this option to enable extended advertising in the example
+
+    choice BUZZER_MMC_BUS_WIDTH
+        prompt "MMC bus width"
+        default BUZZER_MMC_BUS_WIDTH_4
+        help
+            Select a pin number of MMC I/F.
+
+        config BUZZER_MMC_BUS_WIDTH_4
+            bool "4 pins (D0 - D3)"
+
+        config BUZZER_MMC_BUS_WIDTH_1
+            bool "1 pin (D0)"
+    endchoice
+
+    if SOC_SDMMC_USE_GPIO_MATRIX
+
+        config BUZZER_MMC_CMD
+            int "CMD GPIO number"
+            default 35 if IDF_TARGET_ESP32S3
+
+        config BUZZER_MMC_CLK
+            int "CLK GPIO number"
+            default 36 if IDF_TARGET_ESP32S3
+
+        config BUZZER_MMC_D0
+            int "D0 GPIO number"
+            default 37 if IDF_TARGET_ESP32S3
+
+        if BUZZER_MMC_BUS_WIDTH_4
+
+            config BUZZER_MMC_D1
+                int "D1 GPIO number"
+                default 38 if IDF_TARGET_ESP32S3
+
+            config BUZZER_MMC_D2
+                int "D2 GPIO number"
+                default 33 if IDF_TARGET_ESP32S3
+
+            config BUZZER_MMC_D3
+                int "D3 GPIO number"
+                default 34 if IDF_TARGET_ESP32S3
+
+        endif
+
+    endif
+
 endmenu
