@@ -306,11 +306,11 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# Example Configuration
+# HomeBuzzer App Configuration
 #
 CONFIG_EXAMPLE_PEER_ADDR="ADDR_ANY"
 # CONFIG_EXAMPLE_EXTENDED_ADV is not set
-# end of Example Configuration
+# end of HomeBuzzer App Configuration
 
 #
 # Compiler options

@@ -28,7 +28,11 @@
 #include "services/gap/ble_svc_gap.h"
 #include "blecent.h"
 
-static const char *tag = "NimBLE_BLE_CENT";
+
+#include "homebuzzer.h"
+
+
+static const char *tag = TAG_BUZZER;
 static int blecent_gap_event(struct ble_gap_event *event, void *arg);
 static uint8_t peer_addr[6];
 
@@ -613,7 +617,7 @@ app_main(void)
     assert(rc == 0);
 
     /* Set the default device name. */
-    rc = ble_svc_gap_device_name_set("nimble-blecent");
+    rc = ble_svc_gap_device_name_set(BUZZER_GAP_NAME);
     assert(rc == 0);
 
     /* XXX Need to have template for store */
