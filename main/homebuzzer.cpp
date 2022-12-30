@@ -58,13 +58,41 @@ static std::tuple<esp_vfs_fat_sdmmc_mount_config_t,
 }
 
 
+static i2s_chan_handle_t buzzer_sound_init(void) {
+    i2s_chan_handle_t hnd;
+    i2s_chan_config_t cfg = I2S_CHANNEL_DEFAULT_CONFIG(
+            I2S_NUM_AUTO, I2S_ROLE_MASTER);
+    ESP_ERROR_CHECK(i2s_new_channel(&cfg, &hnd, NULL));
+
+    i2s_std_config_t std_cfg = {
+        .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(8000),
+        .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(
+                I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_STEREO),
+        .gpio_cfg = {
+            .mclk = I2S_GPIO_UNUSED,
+            .bclk = BUZZER_I2S_BCLK_IO1,
+            .ws   = BUZZER_I2S_WS_IO1,
+            .dout = BUZZER_I2S_DOUT_IO1,
+            .din  = BUZZER_I2S_DIN_IO1,
+            .invert_flags = {
+                .mclk_inv = false,
+                .bclk_inv = false,
+                .ws_inv   = false,
+            },
+        },
+    };
+    ESP_ERROR_CHECK(i2s_channel_init_std_mode(hnd, &std_cfg));
+    return hnd;
+}
+
+
 static bool buzzer_sound(FILE* fp) {
     if (fp == NULL) {
         ESP_LOGE(tag, "Failed to open file for reading");
         return false;
     }
     char buf[BUZZER_BYTES_FRAME];
-    i2s_chan_handle_t i2sch_tx = 0;
+    i2s_chan_handle_t i2sch_tx = buzzer_sound_init();
 
     while (true) {
         size_t n_write = 0;
