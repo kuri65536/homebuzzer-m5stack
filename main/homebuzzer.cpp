@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <tuple>
 
+#include "driver/i2s_std.h"
 #include "driver/sdmmc_host.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
@@ -61,6 +62,20 @@ static bool buzzer_sound(FILE* fp) {
     if (fp == NULL) {
         ESP_LOGE(tag, "Failed to open file for reading");
         return false;
+    }
+    char buf[BUZZER_BYTES_FRAME];
+    i2s_chan_handle_t i2sch_tx = 0;
+
+    while (true) {
+        size_t n_write = 0;
+        vTaskDelay(pdMS_TO_TICKS(BUZZER_MSEC_FRAME));
+        auto n_read = fread(buf, sizeof(uint8_t), BUZZER_BYTES_FRAME, fp);
+        if (n_read < 1) {break;}
+        auto ret = i2s_channel_write(i2sch_tx, buf, n_read, &n_write, 1000);
+        if (ret != ESP_OK) {
+            ESP_LOGE(tag, "i2s-write: failed");
+        }
+        if (n_read < BUZZER_BYTES_FRAME) {break;}
     }
     return true;
 }
