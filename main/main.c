@@ -34,7 +34,6 @@
 
 static const char *tag = TAG_BUZZER;
 static int blecent_gap_event(struct ble_gap_event *event, void *arg);
-static uint8_t peer_addr[6];
 
 void ble_store_config_init(void);
 
@@ -291,15 +290,8 @@ blecent_should_connect(const struct ble_gap_disc_desc *disc)
         return rc;
     }
 
-    if (strlen(CONFIG_EXAMPLE_PEER_ADDR) && (strncmp(CONFIG_EXAMPLE_PEER_ADDR, "ADDR_ANY", strlen("ADDR_ANY")) != 0)) {
-        ESP_LOGI(tag, "Peer address from menuconfig: %s", CONFIG_EXAMPLE_PEER_ADDR);
-        /* Convert string to address */
-        sscanf(CONFIG_EXAMPLE_PEER_ADDR, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-               &peer_addr[5], &peer_addr[4], &peer_addr[3],
-               &peer_addr[2], &peer_addr[1], &peer_addr[0]);
-        if (memcmp(peer_addr, disc->addr.val, sizeof(disc->addr.val)) != 0) {
-            return 0;
-        }
+    if (buzzer_check_addr(disc->addr.val, sizeof(disc->addr.val))) {
+        return 0;
     }
 
     /* The device has to advertise support for the Alert Notification

@@ -5,6 +5,7 @@
  *
  */
 #pragma once
+#include <stdint.h>
 
 #define BUZZER_GAP_NAME "buzzer-dev1"
 #define TAG_BUZZER "BUZZER"
@@ -33,10 +34,19 @@
 extern "C" {
 #endif
 
+extern bool buzzer_check_addr(const uint8_t* src, int len);
 extern void buzzer_init(void);
 extern bool buzzer(const char* sound_name);
 
 #if defined(__cplusplus)
 }
+
+
+constexpr int const_strcmp(char const* l, char const* r) {
+    return (('\0' == l[0]) && ('\0' == r[0])) ? 0
+         : (l[0] != r[0])                     ? (l[0] - r[0])
+         : const_strcmp(l + 1, r + 1);
+}
+
 #endif
 

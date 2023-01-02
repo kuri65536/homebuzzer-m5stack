@@ -1,6 +1,6 @@
 menu "HomeBuzzer App Configuration"
 
-    config EXAMPLE_PEER_ADDR
+    config BUZZER_PEER_ADDR
         string "Peer Address"
         default "ADDR_ANY"
         help

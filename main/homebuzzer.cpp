@@ -5,6 +5,7 @@
  *
  */
 #include <stdint.h>
+#include <cstring>
 #include <tuple>
 
 #include "driver/i2s_std.h"
@@ -148,5 +149,24 @@ extern "C" bool buzzer(const char* src) {
 
 extern "C" void buzzer_init(void) {
     queue = xQueueCreate(1, sizeof(int32_t));
+}
+
+
+extern "C" bool buzzer_check_addr(const uint8_t* src, int len) {
+    static uint8_t peer_addr[6] = {0};
+
+    if (const_strcmp(CONFIG_BUZZER_PEER_ADDR, "ADDR_ANY") == 0) {
+        return false;
+    }
+
+    ESP_LOGI(tag, "Peer address from menuconfig: %s",
+             CONFIG_BUZZER_PEER_ADDR);
+    /* Convert string to address */
+    if (peer_addr[0] == 0) {
+        sscanf(CONFIG_BUZZER_PEER_ADDR, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+           &peer_addr[5], &peer_addr[4], &peer_addr[3],
+           &peer_addr[2], &peer_addr[1], &peer_addr[0]);
+    }
+    return memcmp(peer_addr, src, len);
 }
 
