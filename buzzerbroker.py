@@ -139,11 +139,13 @@ class Advertisement(dbus.service.Object):
 
 class TestAdvertisement(Advertisement):
 
-    def __init__(self, bus, index):
+    def __init__(self, bus, index, typ):
         Advertisement.__init__(self, bus, index, 'peripheral')
-        self.add_service_uuid('180D')
-        self.add_service_uuid('180F')
-        self.add_manufacturer_data(0xffff, [0x00, 0x01, 0x02, 0x03])
+        self.add_service_uuid('1811')
+        # self.add_service_uuid('180D')
+        # self.add_service_uuid('180F')
+        n = int(time.time()) % 65536
+        self.add_manufacturer_data(0xffff, [typ, n // 256, n % 256, 0x03])
         self.add_service_data('9999', [0x00, 0x01, 0x02, 0x03, 0x04])
         self.add_local_name('TestAdvertisement')
         self.include_tx_power = True
@@ -177,7 +179,7 @@ def shutdown(timeout):
     mainloop.quit()
 
 
-def main(timeout=0):
+def main(timeout=0, typ=0):
     global mainloop
 
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -197,7 +199,7 @@ def main(timeout=0):
     ad_manager = dbus.Interface(bus.get_object(BLUEZ_SERVICE_NAME, adapter),
                                 LE_ADVERTISING_MANAGER_IFACE)
 
-    test_advertisement = TestAdvertisement(bus, 0)
+    test_advertisement = TestAdvertisement(bus, 0, typ)
 
     mainloop = GObject.MainLoop()
 
@@ -222,6 +224,7 @@ if __name__ == '__main__':
     parser.add_argument('--timeout', default=0, type=int, help="advertise " +
                         "for this many seconds then stop, 0=run forever " +
                         "(default: 0)")
+    parser.add_argument('--type', default=0, type=int)
     args = parser.parse_args()
 
-    main(args.timeout)
+    main(args.timeout, args.type)
