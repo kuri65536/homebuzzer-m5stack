@@ -194,8 +194,12 @@ extern "C" void buzzer_task(void* params) {
     static int32_t src = 1;
     xQueueSend(queue, (void*)&src, (TickType_t)0);
 
+    char fname[30] = {0};
+    sprintf(fname, "%s/%s", mount_point, (const char*)params);
+    ESP_LOGE(tag, "buzzer: play %s.", fname);
+
     auto card = buzzer_mount_tf();
-    auto f = fopen((const char*)params, "r");
+    auto f = fopen(fname, "r");
     if (buzzer_sound(f)) {
         fclose(f);
     }

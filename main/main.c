@@ -309,6 +309,7 @@ blecent_gap_event(struct ble_gap_event *event, void *arg)
             return 0;
         }
         ESP_LOGI(tag, "advertise: buzzer new %s", sndname);
+        buzzer(sndname);
         return 0;
 
     case BLE_GAP_EVENT_CONNECT:
