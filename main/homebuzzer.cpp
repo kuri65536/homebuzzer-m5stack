@@ -39,6 +39,11 @@ static const int buzzer_bus_width =
     #endif
 static const char mount_point[] = "/sdcard";
 static const char tag[] = TAG_BUZZER;
+static char* sounds[10] = {
+    (char*)nullptr, (char*)nullptr, (char*)nullptr, (char*)nullptr,
+    (char*)nullptr, (char*)nullptr, (char*)nullptr, (char*)nullptr,
+    (char*)nullptr, (char*)nullptr,
+};
 
 
 static std::tuple<esp_vfs_fat_sdmmc_mount_config_t,
@@ -180,12 +185,37 @@ extern "C" bool buzzer(const char* src) {
 extern "C" void buzzer_init_task(void* params) {
     auto hnd_task = *(TaskHandle_t*)params;
 
+    auto strendswith = [] (const char* s1, const char* s2) {
+        auto len1 = strlen(s1);
+        auto len2 = strlen(s2);
+        return len1 >= len2 && !memcmp(&s1[len1] - len2, s2, len2);
+    };
+
+    auto check_fname = [strendswith] (const char* src) {
+        auto ret = src[0] - '0';
+        if (ret >= 0 && ret <= 9) {return ret;}
+        if (!strendswith(src, ".WAV")) {return -1;}
+        for (int i = 0; i < ARRAY_SIZE(sounds); i++) {
+            if (sounds[i] == nullptr) {
+                return i;
+            }
+        }
+        return -1;
+    };
+
     auto card = buzzer_mount_tf();
 
     auto d = opendir(mount_point);
     while (auto ent = readdir(d)) {
         auto fname = ent->d_name;
         ESP_LOGI(tag, "buzzer_init_task: %s", fname);
+        auto n = check_fname(fname);
+        if (n < 0) {continue;}
+
+        auto len = strlen(fname);
+        sounds[n] = (char*)malloc(len + 1);
+        memcpy((void*)sounds[n], fname, len + 1);
+        ESP_LOGI(tag, "buzzer_init_task: stored to %d", n);
     }
     closedir(d);
 
