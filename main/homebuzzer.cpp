@@ -9,6 +9,7 @@
 #include <cstring>
 #include <tuple>
 
+#include "driver/dac.h"
 #include "driver/i2s_std.h"
 #include "driver/sdmmc_host.h"
 #include "esp_log.h"
@@ -27,6 +28,13 @@
 
 
 #define BUZZER_TASKTAG "BUZZER"
+
+const dac_channel_t buzzer_dac_ch =
+#if CONFIG_BUZZER_DAC_CH == 2
+    DAC_CHANNEL_2;  /// GPIO26
+#else
+    DAC_CHANNEL_1;  /// GPIO25 (M5 Stack)
+#endif
 
 static QueueHandle_t queue;
 static TaskHandle_t task_handle;
@@ -179,7 +187,9 @@ static bool buzzer_sound(FILE* fp) {
     }
     int8_t buf[BUZZER_BYTES_FRAME];
     auto [bits, streao, tick] = buzzer_sound_read_format(fp);
+    #if 0
     i2s_chan_handle_t i2sch_tx = buzzer_sound_init();
+    #endif
 
     const int n_limit = 1000000;
     auto n = 0;
@@ -294,6 +304,9 @@ extern "C" void buzzer_init_task(void* params) {
     closedir(d);
 
     esp_vfs_fat_sdcard_unmount(mount_point, card);
+
+    dac_i2s_disable();
+    dac_output_enable(buzzer_dac_ch);
 
     for (;;) {
         vTaskDelete(hnd_task);
