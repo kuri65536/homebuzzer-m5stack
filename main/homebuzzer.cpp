@@ -191,6 +191,8 @@ static sdmmc_card_t* buzzer_mount_tf() {
 
 
 extern "C" void buzzer_task(void* params) {
+    static int32_t src = 1;
+    xQueueSend(queue, (void*)&src, (TickType_t)0);
 
     auto card = buzzer_mount_tf();
     auto f = fopen((const char*)params, "r");
@@ -199,16 +201,22 @@ extern "C" void buzzer_task(void* params) {
     }
     esp_vfs_fat_sdcard_unmount(mount_point, card);
 
-    vQueueDelete(queue);
+    xQueueReset(queue);
+
+    for (;;) {
+        vTaskDelete(task_handle);
+    }
 }
 
 
 extern "C" bool buzzer(const char* src) {
-    if (!uxQueueSpacesAvailable(queue)) {
+    int tmp = 0;
+    if (xQueuePeek(queue, (void*)&tmp, (TickType_t)0)) {
+        ESP_LOGE(tag, "buzzer: duplicated playing ignored...");
         return true;
     }
-    xTaskCreatePinnedToCore(buzzer_task, "BUZZER", BUZZER_STACK_SIZE,
-                            (void*)src, 12, nullptr, BUZZER_CPUCORE);
+    xTaskCreatePinnedToCore(buzzer_task, BUZZER_TASKTAG, BUZZER_STACK_SIZE,
+                            (void*)src, 12, &task_handle, BUZZER_CPUCORE);
     return false;
 }
 
@@ -260,6 +268,7 @@ extern "C" void buzzer_init_task(void* params) {
 
 extern "C" void buzzer_init(void) {
     queue = xQueueCreate(1, sizeof(int32_t));
+    ESP_LOGI(tag, "buzzer_init: queue: %x", (int)queue);
 
     xTaskCreatePinnedToCore(buzzer_init_task, BUZZER_TASKTAG, BUZZER_STACK_SIZE,
                             &task_handle, 12, &task_handle, BUZZER_CPUCORE);
