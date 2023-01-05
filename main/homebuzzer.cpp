@@ -153,7 +153,9 @@ static bool buzzer_sound(FILE* fp) {
     auto [bits, streao, tick] = buzzer_sound_read_format(fp);
     i2s_chan_handle_t i2sch_tx = buzzer_sound_init();
 
-    while (true) {
+    const int n_limit = 1000000;
+    auto n = 0;
+    while (n++ < n_limit) {
         size_t n_write = 0;
         vTaskDelay(pdMS_TO_TICKS(BUZZER_MSEC_FRAME));
         auto n_read = fread(buf, sizeof(uint8_t), BUZZER_BYTES_FRAME, fp);
@@ -164,6 +166,7 @@ static bool buzzer_sound(FILE* fp) {
         }
         if (n_read < BUZZER_BYTES_FRAME) {break;}
     }
+    ESP_LOGI(tag, "buzzer_sound: loop %d times...", n);
     return true;
 }
 
