@@ -114,12 +114,43 @@ static i2s_chan_handle_t buzzer_sound_init(void) {
 }
 
 
+static std::tuple<int, bool, int> buzzer_sound_read_format(FILE* fp) {
+    uint8_t tmp[8];
+    fread(tmp, 1, 4, fp);  // - `RIFF`
+    fread(tmp, 1, 4, fp);  // - file size
+    fread(tmp, 1, 4, fp);  // - `WAVE`
+    fread(tmp, 1, 4, fp);  // - `fmt\0`
+    fread(tmp, 1, 4, fp);  // - 16 for header length.
+    fread(tmp, 1, 2, fp);  // - 1:PCM
+    fread(tmp, 1, 2, fp);  // - channel
+    auto channels = *(uint16_t*)tmp;
+    fread(tmp, 1, 4, fp);  // - sample rate (sample/sec)
+    auto rate = *(uint32_t*)tmp;
+    fread(tmp, 1, 4, fp);  // - sample rate (bytes/sec)
+    fread(tmp, 1, 2, fp);  // - block alignment
+    fread(tmp, 1, 2, fp);  // - bits per sample
+    auto sample = *(uint16_t*)tmp;
+    fread(tmp, 1, 4, fp);  // - `data` : beginning of data section.
+    fread(tmp, 1, 4, fp);  // - size of data section
+
+    // auto tick = (1000000 + (rate >> 1)) / rate;
+    auto tick = 1000000 / rate;
+    #if 0
+    auto tick = rate == 44100 ? 23:  /// - 44100Hz -> 22.6[usec]
+                rate == 48000 ? 21:  /// - 48000Hz -> 20.8[usec]
+    #endif
+    auto streao = channels != 1;
+    return {sample, streao, tick};
+}
+
+
 static bool buzzer_sound(FILE* fp) {
     if (fp == NULL) {
         ESP_LOGE(tag, "Failed to open file for reading");
         return false;
     }
-    char buf[BUZZER_BYTES_FRAME];
+    int8_t buf[BUZZER_BYTES_FRAME];
+    auto [bits, streao, tick] = buzzer_sound_read_format(fp);
     i2s_chan_handle_t i2sch_tx = buzzer_sound_init();
 
     while (true) {
