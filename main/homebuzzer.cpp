@@ -300,6 +300,25 @@ bool buzzer_check_service(const struct ble_hs_adv_fields* fields) {
 }
 
 
+static bool buzzer_check_history(uint16_t n_new) {
+    static int history_adv_n = 0;
+    static uint16_t history_adv[5] = {0, 0, 0, 0, 0};
+
+    const int N = ARRAY_SIZE(history_adv);
+    for (int i = 0; i < N; i++) {
+        if (history_adv[i] == n_new) {
+            ESP_LOGI(tag, "buzzer_chk_hist: found at %d(%d)", n_new, i);
+            return true;
+        }
+    }
+    auto j = history_adv_n++;
+    history_adv_n = history_adv_n >= N ? 0: history_adv_n;
+    history_adv[j] = n_new;
+    ESP_LOGI(tag, "buzzer_chk_hist: update to %d(%d)", n_new, j);
+    return false;
+}
+
+
 extern "C" const char* buzzer_from_advertise(
         const struct ble_gap_disc_desc* disc
         // const struct ble_hs_adv_fields* fields
@@ -325,14 +344,22 @@ extern "C" const char* buzzer_from_advertise(
         return nullptr;
     }
     const char* result = nullptr;
+    int num = 0;
     for (int i = 0; i < fields.mfg_data_len; i++) {
         ESP_LOGI(tag, "buzzer_from_adv: data(%d)-%2x",
                  i, fields.mfg_data[i]);
         auto n = fields.mfg_data[i];
+        if (i == 3 || i == 4) {
+            num += n << (8 * (i - 3));
+            continue;
+        }
         if (i != 2) {continue;}
         if (n < ARRAY_SIZE(sounds)) {
             result = sounds[n];
         }
+    }
+    if (result && buzzer_check_history(num)) {
+        return nullptr;
     }
     return result;
 }
