@@ -4,6 +4,7 @@
  * ==================================
  *
  */
+#include <dirent.h>
 #include <stdint.h>
 #include <cstring>
 #include <tuple>
@@ -25,7 +26,10 @@
 #include "homebuzzer.h"
 
 
+#define BUZZER_TASKTAG "BUZZER"
+
 static QueueHandle_t queue;
+static TaskHandle_t task_handle;
 
 static const int buzzer_bus_width =
     #if defined(CONFIG_BUZZER_MMC_BUS_WIDTH_4)
@@ -173,8 +177,31 @@ extern "C" bool buzzer(const char* src) {
 }
 
 
+extern "C" void buzzer_init_task(void* params) {
+    auto hnd_task = *(TaskHandle_t*)params;
+
+    auto card = buzzer_mount_tf();
+
+    auto d = opendir(mount_point);
+    while (auto ent = readdir(d)) {
+        auto fname = ent->d_name;
+        ESP_LOGI(tag, "buzzer_init_task: %s", fname);
+    }
+    closedir(d);
+
+    esp_vfs_fat_sdcard_unmount(mount_point, card);
+
+    for (;;) {
+        vTaskDelete(hnd_task);
+    }
+}
+
+
 extern "C" void buzzer_init(void) {
     queue = xQueueCreate(1, sizeof(int32_t));
+
+    xTaskCreatePinnedToCore(buzzer_init_task, BUZZER_TASKTAG, BUZZER_STACK_SIZE,
+                            &task_handle, 12, &task_handle, BUZZER_CPUCORE);
 }
 
 
