@@ -369,7 +369,9 @@ extern "C" const char* buzzer_from_advertise(
 ) {
     if (disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
         disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND) {
+        /*
         ESP_LOGE(tag, "buzzer_from_adv: invalid type: %d", disc->event_type);
+        */
         return nullptr;
     }
     if (buzzer_check_addr(disc->addr.val, sizeof(disc->addr.val))) {
