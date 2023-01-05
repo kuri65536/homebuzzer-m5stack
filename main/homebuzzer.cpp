@@ -328,11 +328,10 @@ extern "C" const char* buzzer_from_advertise(
     for (int i = 0; i < fields.mfg_data_len; i++) {
         ESP_LOGI(tag, "buzzer_from_adv: data(%d)-%2x",
                  i, fields.mfg_data[i]);
+        auto n = fields.mfg_data[i];
         if (i != 2) {continue;}
-        switch (fields.mfg_data[i]) {
-        case 1:   result = "1.wav"; break;
-        case 2:   result = "2.wav"; break;
-        default:  break;
+        if (n < ARRAY_SIZE(sounds)) {
+            result = sounds[n];
         }
     }
     return result;
