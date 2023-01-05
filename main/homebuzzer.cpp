@@ -144,6 +144,34 @@ static std::tuple<int, bool, int> buzzer_sound_read_format(FILE* fp) {
 }
 
 
+static inline std::tuple<int, int> buzzer_sound_read1(
+        const int8_t* src, int m, int n_bits, bool streao
+) {
+    if (streao) {
+        if (n_bits == 16) {
+            auto l = *(int16_t*)&src[m];
+            auto r = *(int16_t*)&src[m + 2];
+            auto v = ((int)l + (int)r) / 512;
+            return {4, v};
+        } else {
+            auto l = src[m];
+            auto r = src[m + 1];
+            auto v = ((int)l + (int)r) / 2;
+            return {2, v};
+        }
+    } else {
+        if (n_bits == 16) {
+            auto l = *(int16_t*)&src[m];
+            auto v = ((int)l) / 256;
+            return {2, v};
+        } else {
+            auto v = (int)src[m];
+            return {1, v};
+        }
+    }
+}
+
+
 static bool buzzer_sound(FILE* fp) {
     if (fp == NULL) {
         ESP_LOGE(tag, "Failed to open file for reading");
