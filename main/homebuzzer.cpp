@@ -15,9 +15,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "host/ble_hs.h"
+// #include "host/util/util.h"
 #include "sdmmc_cmd.h"
+// #include "services/gap/ble_svc_gap.h"
 
 
+#include "blecent.h"
 #include "homebuzzer.h"
 
 
@@ -156,6 +160,9 @@ extern "C" bool buzzer_check_addr(const uint8_t* src, int len) {
     static uint8_t peer_addr[6] = {0};
 
     if (const_strcmp(CONFIG_BUZZER_PEER_ADDR, "ADDR_ANY") == 0) {
+        ESP_LOGI(tag, "buzzer_chk_addr: any: %x:%x:%x:%x:%x:%x",
+                 src[5], src[4], src[3],
+                 src[2], src[1], src[0]);
         return false;
     }
 
@@ -168,5 +175,56 @@ extern "C" bool buzzer_check_addr(const uint8_t* src, int len) {
            &peer_addr[2], &peer_addr[1], &peer_addr[0]);
     }
     return memcmp(peer_addr, src, len);
+}
+
+
+bool buzzer_check_service(const struct ble_hs_adv_fields* fields) {
+    for (int i = 0; i < fields->num_uuids16; i++) {
+        if (ble_uuid_u16(&fields->uuids16[i].u) == BLECENT_SVC_ALERT_UUID) {
+            ESP_LOGI(tag, "buzzer_chk_serv: found %d/%d",
+                     i, fields->num_uuids16);
+            return false;
+        }
+    }
+    return true;
+}
+
+
+extern "C" const char* buzzer_from_advertise(
+        const struct ble_gap_disc_desc* disc
+        // const struct ble_hs_adv_fields* fields
+) {
+    if (disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
+        disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND) {
+        ESP_LOGE(tag, "buzzer_from_adv: invalid type: %d", disc->event_type);
+        return nullptr;
+    }
+    if (buzzer_check_addr(disc->addr.val, sizeof(disc->addr.val))) {
+        return nullptr;
+    }
+
+    struct ble_hs_adv_fields fields;
+    auto rc = ble_hs_adv_parse_fields(&fields, disc->data, disc->length_data);
+    if (rc != 0) {
+        ESP_LOGE(tag, "buzzer_from_adv: can't parse fields: %d", rc);
+        return nullptr;
+    }
+
+    if (buzzer_check_service(&fields)) {
+        ESP_LOGI(tag, "buzzer_from_adv: dont have service.");
+        return nullptr;
+    }
+    const char* result = nullptr;
+    for (int i = 0; i < fields.mfg_data_len; i++) {
+        ESP_LOGI(tag, "buzzer_from_adv: data(%d)-%2x",
+                 i, fields.mfg_data[i]);
+        if (i != 2) {continue;}
+        switch (fields.mfg_data[i]) {
+        case 1:   result = "1.wav"; break;
+        case 2:   result = "2.wav"; break;
+        default:  break;
+        }
+    }
+    return result;
 }
 

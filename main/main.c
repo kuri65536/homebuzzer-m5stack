@@ -234,6 +234,7 @@ blecent_scan(void)
     struct ble_gap_disc_params disc_params;
     int rc;
 
+    MODLOG_DFLT(DEBUG, "scan: start...\n");
     /* Figure out address to use while advertising (no privacy for now) */
     rc = ble_hs_id_infer_auto(0, &own_addr_type);
     if (rc != 0) {
@@ -244,7 +245,7 @@ blecent_scan(void)
     /* Tell the controller to filter duplicates; we don't want to process
      * repeated advertisements from the same device.
      */
-    disc_params.filter_duplicates = 1;
+    disc_params.filter_duplicates = 0;
 
     /**
      * Perform a passive scan.  I.e., don't send follow-up scan requests to
@@ -266,92 +267,6 @@ blecent_scan(void)
     }
 }
 
-/**
- * Indicates whether we should try to connect to the sender of the specified
- * advertisement.  The function returns a positive result if the device
- * advertises connectability and support for the Alert Notification service.
- */
-static int
-blecent_should_connect(const struct ble_gap_disc_desc *disc)
-{
-    struct ble_hs_adv_fields fields;
-    int rc;
-    int i;
-
-    /* The device has to be advertising connectability. */
-    if (disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
-            disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND) {
-
-        return 0;
-    }
-
-    rc = ble_hs_adv_parse_fields(&fields, disc->data, disc->length_data);
-    if (rc != 0) {
-        return rc;
-    }
-
-    if (buzzer_check_addr(disc->addr.val, sizeof(disc->addr.val))) {
-        return 0;
-    }
-
-    /* The device has to advertise support for the Alert Notification
-     * service (0x1811).
-     */
-    for (i = 0; i < fields.num_uuids16; i++) {
-        if (ble_uuid_u16(&fields.uuids16[i].u) == BLECENT_SVC_ALERT_UUID) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-
-/**
- * Connects to the sender of the specified advertisement of it looks
- * interesting.  A device is "interesting" if it advertises connectability and
- * support for the Alert Notification service.
- */
-static void
-blecent_connect_if_interesting(void *disc)
-{
-    uint8_t own_addr_type;
-    int rc;
-    ble_addr_t *addr;
-
-    /* Don't do anything if we don't care about this advertiser. */
-    if (!blecent_should_connect((struct ble_gap_disc_desc *)disc)) {
-        return;
-    }
-
-    /* Scanning must be stopped before a connection can be initiated. */
-    rc = ble_gap_disc_cancel();
-    if (rc != 0) {
-        MODLOG_DFLT(DEBUG, "Failed to cancel scan; rc=%d\n", rc);
-        return;
-    }
-
-    /* Figure out address to use for connect (no privacy for now) */
-    rc = ble_hs_id_infer_auto(0, &own_addr_type);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "error determining address type; rc=%d\n", rc);
-        return;
-    }
-
-    /* Try to connect the the advertiser.  Allow 30 seconds (30000 ms) for
-     * timeout.
-     */
-    addr = &((struct ble_gap_disc_desc *)disc)->addr;
-
-    rc = ble_gap_connect(own_addr_type, addr, 30000, NULL,
-                         blecent_gap_event, NULL);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "Error: Failed to connect to device; addr_type=%d "
-                    "addr=%s; rc=%d\n",
-                    addr->type, addr_str(addr->val), rc);
-        return;
-    }
-}
 
 /**
  * The nimble host executes this callback when a GAP event occurs.  The
@@ -385,8 +300,15 @@ blecent_gap_event(struct ble_gap_event *event, void *arg)
         /* An advertisment report was received during GAP discovery. */
         print_adv_fields(&fields);
 
-        /* Try to connect to the advertiser if it looks interesting. */
+        #if 0  /// - homebuzzer does not need to connect, see blecent sample.
         blecent_connect_if_interesting(&event->disc);
+        #endif
+        const char* sndname = buzzer_from_advertise(
+                &event->disc);
+        if (sndname == NULL) {
+            return 0;
+        }
+        ESP_LOGI(tag, "advertise: buzzer new %s", sndname);
         return 0;
 
     case BLE_GAP_EVENT_CONNECT:

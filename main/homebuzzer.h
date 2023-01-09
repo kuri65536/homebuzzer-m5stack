@@ -35,6 +35,8 @@ extern "C" {
 #endif
 
 extern bool buzzer_check_addr(const uint8_t* src, int len);
+extern const char* buzzer_from_advertise(
+        const struct ble_gap_disc_desc* disc);
 extern void buzzer_init(void);
 extern bool buzzer(const char* sound_name);
 
