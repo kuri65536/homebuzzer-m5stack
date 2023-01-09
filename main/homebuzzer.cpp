@@ -38,7 +38,8 @@ static const char tag[] = TAG_BUZZER;
 
 
 static std::tuple<esp_vfs_fat_sdmmc_mount_config_t,
-                  sdmmc_slot_config_t> buzzer_tf_init() {
+                  int, sdmmc_host_t,
+                  sdspi_device_config_t> buzzer_tf_init() {
     esp_vfs_fat_sdmmc_mount_config_t ret1 = {
         .format_if_mount_failed = false,
         .max_files = 5,
@@ -46,20 +47,33 @@ static std::tuple<esp_vfs_fat_sdmmc_mount_config_t,
         .disk_status_check_enable = false,
     };
 
-    sdmmc_slot_config_t ret2 = SDMMC_SLOT_CONFIG_DEFAULT();
-    ret2.width = buzzer_bus_width;
-    #if defined(CONFIG_SOC_SDMMC_USE_GPIO_MATRIX)
-    ret2.clk = CONFIG_BUZZER_MMC_CLK;
-    ret2.cmd = CONFIG_BUZZER_MMC_CMD;
-    ret2.d0 = CONFIG_BUZZER_MMC_D0;
-    #if defined(CONFIG_BUZZER_MMC_BUS_WIDTH_4)
-    ret2.d1 = CONFIG_BUZZER_MMC_D1;
-    ret2.d2 = CONFIG_BUZZER_MMC_D2;
-    ret2.d3 = CONFIG_BUZZER_MMC_D3;
-    #endif
-    #endif
-    ret2.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
-    return {ret1, ret2};
+    static bool f_init = true;
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = CONFIG_BUZZER_MMC_MOSI,
+        .miso_io_num = CONFIG_BUZZER_MMC_MISO,
+        .sclk_io_num = CONFIG_BUZZER_MMC_CLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 4000,
+    };
+    auto hostid = (spi_host_device_t)host.slot;
+    int rc;
+    if (f_init) {
+        rc = spi_bus_initialize(hostid, &bus_cfg, SDSPI_DEFAULT_DMA);
+        if (rc != ESP_OK) {
+            ESP_LOGE(tag, "Failed to initialize bus.");
+        }
+        f_init = false;
+    } else {
+        rc = ESP_OK;
+    }
+
+    sdspi_device_config_t ret2 = SDSPI_DEVICE_CONFIG_DEFAULT();
+    ret2.gpio_cs = (gpio_num_t)CONFIG_BUZZER_MMC_CS;
+    ret2.host_id = hostid;
+
+    return {ret1, rc, host, ret2};
 }
 
 
@@ -114,23 +128,31 @@ static bool buzzer_sound(FILE* fp) {
 }
 
 
-extern "C" void buzzer_task(void* params) {
-    xQueueSend(queue, (void*)0, (TickType_t)0);
-
+static sdmmc_card_t* buzzer_mount_tf() {
     sdmmc_card_t *card;
-    auto [mount_config, slot_config] = buzzer_tf_init();
-    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    auto [mount_config, rc, host, slot_config] = buzzer_tf_init();
+    if (rc != ESP_OK) {
+        return nullptr;
+    }
 
-    auto ret = esp_vfs_fat_sdmmc_mount(
+    auto ret = esp_vfs_fat_sdspi_mount(
             mount_point, &host, &slot_config, &mount_config, &card);
     if (ret == ESP_FAIL) {
         ESP_LOGE(tag, "mmc-mount: Failed (not formatted)");
+        return nullptr;
     } else if (ret != ESP_OK) {
         ESP_LOGE(tag, "mmc-mount: Failed (formatting) %s.",
                  esp_err_to_name(ret));
+        return nullptr;
     }
     sdmmc_card_print_info(stdout, card);
+    return card;
+}
 
+
+extern "C" void buzzer_task(void* params) {
+
+    auto card = buzzer_mount_tf();
     auto f = fopen((const char*)params, "r");
     if (buzzer_sound(f)) {
         fclose(f);

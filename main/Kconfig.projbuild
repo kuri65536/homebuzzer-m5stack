@@ -6,49 +6,36 @@ menu "HomeBuzzer App Configuration"
         help
             Enter the peer address in aa:bb:cc:dd:ee:ff form to connect to a specific peripheral
 
-    choice BUZZER_MMC_BUS_WIDTH
-        prompt "MMC bus width"
-        default BUZZER_MMC_BUS_WIDTH_4
-        help
-            Select a pin number of MMC I/F.
+    config BUZZER_MMC_MOSI
+        int "MOSI GPIO number"
+        default 15 if IDF_TARGET_ESP32
+        default 35 if IDF_TARGET_ESP32S2
+        default 35 if IDF_TARGET_ESP32S3
+        default 23  # M5-Stack
+        # default 4  # C3 and others
 
-        config BUZZER_MMC_BUS_WIDTH_4
-            bool "4 pins (D0 - D3)"
+    config BUZZER_MMC_MISO
+        int "MISO GPIO number"
+        default 2 if IDF_TARGET_ESP32
+        default 37 if IDF_TARGET_ESP32S2
+        default 37 if IDF_TARGET_ESP32S3
+        default 19  # M5-Stack
+        # default 6  # C3 and others
 
-        config BUZZER_MMC_BUS_WIDTH_1
-            bool "1 pin (D0)"
-    endchoice
+    config BUZZER_MMC_CLK
+        int "CLK GPIO number"
+        default 14 if IDF_TARGET_ESP32
+        default 36 if IDF_TARGET_ESP32S2
+        default 36 if IDF_TARGET_ESP32S3
+        default 18  # M5-Stack
+        # default 5  # C3 and others
 
-    if SOC_SDMMC_USE_GPIO_MATRIX
-
-        config BUZZER_MMC_CMD
-            int "CMD GPIO number"
-            default 35 if IDF_TARGET_ESP32S3
-
-        config BUZZER_MMC_CLK
-            int "CLK GPIO number"
-            default 36 if IDF_TARGET_ESP32S3
-
-        config BUZZER_MMC_D0
-            int "D0 GPIO number"
-            default 37 if IDF_TARGET_ESP32S3
-
-        if BUZZER_MMC_BUS_WIDTH_4
-
-            config BUZZER_MMC_D1
-                int "D1 GPIO number"
-                default 38 if IDF_TARGET_ESP32S3
-
-            config BUZZER_MMC_D2
-                int "D2 GPIO number"
-                default 33 if IDF_TARGET_ESP32S3
-
-            config BUZZER_MMC_D3
-                int "D3 GPIO number"
-                default 34 if IDF_TARGET_ESP32S3
-
-        endif
-
-    endif
+    config BUZZER_MMC_CS
+        int "CS GPIO number"
+        default 13 if IDF_TARGET_ESP32
+        default 34 if IDF_TARGET_ESP32S2
+        default 34 if IDF_TARGET_ESP32S3
+        default 4   # M5-Stack
+        # default 1  # C3 and others
 
 endmenu
