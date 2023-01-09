@@ -210,6 +210,8 @@ static bool buzzer_sound(FILE* fp) {
     auto [bits, streao, tick] = buzzer_sound_read_format(fp);
     #if 0
     i2s_chan_handle_t i2sch_tx = buzzer_sound_init();
+    #else
+    dac_output_enable(buzzer_dac_ch);
     #endif
 
     const int n_limit = 1000000;
@@ -230,6 +232,7 @@ static bool buzzer_sound(FILE* fp) {
         if (n_read < BUZZER_BYTES_FRAME) {break;}
     }
     ESP_LOGI(tag, "buzzer_sound: loop %d times...", n);
+    dac_output_disable(buzzer_dac_ch);
     return true;
 }
 
@@ -331,7 +334,6 @@ extern "C" void buzzer_init_task(void* params) {
     esp_vfs_fat_sdcard_unmount(mount_point, card);
 
     dac_i2s_disable();
-    dac_output_enable(buzzer_dac_ch);
 
     for (;;) {
         vTaskDelete(hnd_task);

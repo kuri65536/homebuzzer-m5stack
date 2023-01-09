@@ -128,6 +128,14 @@ $ idf.py -p /dev/ttyUSB0 flash
 Related documents
 ------------------------
 
+### TF-Card interface
+- M5-Stack pin info:  
+    https://github.com/kunsen-an/m5stack_espidf_sd_card_write_test
+
+### BLE Advertisement
+- Advertisement data:  
+    https://git.kernel.org/pub/scm/bluetooth/bluez.git/tree/doc/advertising-api.txt
+
 ### DAC peripheral
 - https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-reference/peripherals/dac.html
 
