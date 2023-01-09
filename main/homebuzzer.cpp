@@ -19,6 +19,7 @@
 #include "freertos/queue.h"
 #include "host/ble_hs.h"
 // #include "host/util/util.h"
+#include "rom/ets_sys.h"
 #include "sdmmc_cmd.h"
 // #include "services/gap/ble_svc_gap.h"
 
@@ -180,6 +181,26 @@ static inline std::tuple<int, int> buzzer_sound_read1(
 }
 
 
+static void buzzer_sound_loop(const int8_t* src, int len,
+                              int n_bits, bool streao, int tick
+) {
+    auto i = 0;
+    auto n = 0;
+    while (n < len) {
+        auto [idx, val] = buzzer_sound_read1(src, n, n_bits, streao);
+        val = ((val % 128) / 3) + 64;
+        n += idx;
+        dac_output_voltage(buzzer_dac_ch, val);
+        ets_delay_us(tick);
+        i++;
+    }
+    #if 0
+    ESP_LOGI(tag, "buzzer_sound_loop: %d,%d,%d-%d,%d",
+             n_bits, streao, tick, len, i);
+    #endif
+}
+
+
 static bool buzzer_sound(FILE* fp) {
     if (fp == NULL) {
         ESP_LOGE(tag, "Failed to open file for reading");
@@ -194,14 +215,18 @@ static bool buzzer_sound(FILE* fp) {
     const int n_limit = 1000000;
     auto n = 0;
     while (n++ < n_limit) {
+        auto n_read = fread(buf, sizeof(int8_t), BUZZER_BYTES_FRAME, fp);
+        if (n_read < 1) {break;}
+        #if 0
         size_t n_write = 0;
         vTaskDelay(pdMS_TO_TICKS(BUZZER_MSEC_FRAME));
-        auto n_read = fread(buf, sizeof(uint8_t), BUZZER_BYTES_FRAME, fp);
-        if (n_read < 1) {break;}
         auto ret = i2s_channel_write(i2sch_tx, buf, n_read, &n_write, 1000);
         if (ret != ESP_OK) {
             ESP_LOGE(tag, "i2s-write: failed");
         }
+        #else
+        buzzer_sound_loop(buf, n_read, bits, streao, tick);
+        #endif
         if (n_read < BUZZER_BYTES_FRAME) {break;}
     }
     ESP_LOGI(tag, "buzzer_sound: loop %d times...", n);
