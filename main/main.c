@@ -251,11 +251,11 @@ blecent_scan(void)
      * Perform a passive scan.  I.e., don't send follow-up scan requests to
      * each advertiser.
      */
-    disc_params.passive = 1;
+    disc_params.passive = 0;
 
     /* Use defaults for the rest of the parameters. */
-    disc_params.itvl = 0;
-    disc_params.window = 0;
+    disc_params.itvl = 0x0000;
+    disc_params.window = 0x0000;
     disc_params.filter_policy = 0;
     disc_params.limited = 0;
 
@@ -296,6 +296,9 @@ blecent_gap_event(struct ble_gap_event *event, void *arg)
         if (rc != 0) {
             return 0;
         }
+        /*
+        ESP_LOGI(tag, "%d-%d", fields.num_uuids16, fields.num_uuids128);
+        */
 
         /* An advertisment report was received during GAP discovery. */
         print_adv_fields(&fields);

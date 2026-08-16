@@ -143,7 +143,8 @@ static std::tuple<int, bool, int> buzzer_sound_read_format(FILE* fp) {
     fread(tmp, 1, 4, fp);  // - size of data section
 
     // auto tick = (1000000 + (rate >> 1)) / rate;
-    auto tick = 1000000 / rate;
+    auto tick = rate == 48000 ? 15:
+                                1000000 / rate;
     #if 0
     auto tick = rate == 44100 ? 23:  /// - 44100Hz -> 22.6[usec]
                 rate == 48000 ? 21:  /// - 48000Hz -> 20.8[usec]
@@ -354,9 +355,11 @@ extern "C" bool buzzer_check_addr(const uint8_t* src, int len) {
     static uint8_t peer_addr[6] = {0};
 
     if (const_strcmp(CONFIG_BUZZER_PEER_ADDR, "ADDR_ANY") == 0) {
+        /*
         ESP_LOGI(tag, "buzzer_chk_addr: any: %x:%x:%x:%x:%x:%x",
                  src[5], src[4], src[3],
                  src[2], src[1], src[0]);
+        */
         return false;
     }
 
@@ -380,6 +383,10 @@ bool buzzer_check_service(const struct ble_hs_adv_fields* fields) {
             return false;
         }
     }
+    /*
+    ESP_LOGI(tag, "buzzer_chk_serv: not found %d,%d",
+             fields->num_uuids16, fields->num_uuids128);
+    */
     return true;
 }
 
@@ -407,16 +414,25 @@ extern "C" const char* buzzer_from_advertise(
         const struct ble_gap_disc_desc* disc
         // const struct ble_hs_adv_fields* fields
 ) {
+    if (buzzer_check_addr(disc->addr.val, sizeof(disc->addr.val))) {
+        return nullptr;
+    }
     if (disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
-        disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND) {
+        disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND &&
+        disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_NONCONN_IND) {
+        // disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_SCAN_RSP) {
+
         /*
         ESP_LOGE(tag, "buzzer_from_adv: invalid type: %d", disc->event_type);
         */
         return nullptr;
     }
-    if (buzzer_check_addr(disc->addr.val, sizeof(disc->addr.val))) {
-        return nullptr;
+    /*
+    for (int i = 0; i < disc->length_data; i++) {
+        ESP_LOGI(tag, "buzzer_from_adv: disc->data: %x", disc->data[i]);
     }
+    ESP_LOGI(tag, "buzzer_from_adv: event_type: %d", disc->event_type);
+    */
 
     struct ble_hs_adv_fields fields;
     auto rc = ble_hs_adv_parse_fields(&fields, disc->data, disc->length_data);
@@ -441,6 +457,7 @@ extern "C" const char* buzzer_from_advertise(
         }
         if (i != 2) {continue;}
         if (n < ARRAY_SIZE(sounds)) {
+            ESP_LOGE(tag, "buzzer_from_adv: sound selected to %d", n);
             result = sounds[n];
         }
     }
